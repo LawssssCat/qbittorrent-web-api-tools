@@ -1,0 +1,53 @@
+#!/bin/bash
+
+# defaults, but use exported values if they are set
+: ${qbt_host:=http://127.0.0.1}
+: ${qbt_port:=8080}
+: ${qbt_username:=admin}
+: ${qbt_password:=adminadmin}
+
+# paths
+jq_executable="$(command -v jq)"
+curl_executable="$(command -v curl)"
+
+if [[ -z $jq_executable ]]; then
+	echo -e "${COLOR_RED}Fail on jq. Aborting.${COLOR_RESET}"
+	echo "You can find it here: https://stedolan.github.io/jq/"
+	echo "Or you can install it with -> sudo apt install jq"
+	exit 1
+fi
+
+if [[ -z $curl_executable ]]; then
+	echo -e "${COLOR_RED}Fail on curl. Aborting.${COLOR_RESET}"
+	echo "You can install it with -> sudo apt install curl"
+	exit 1
+fi
+
+export jq_executable
+export curl_executable
+
+curl_executable="$curl_executable --silent --fail --show-error --connect-timeout 120"
+
+# qbittorrent web-api functions
+get_cookie () {
+    if [[ -z "$qbt_cookie" ]]; then
+        qbt_cookie=$($curl_executable \
+            --header "Referer: ${qbt_host}:${qbt_port}" \
+            --cookie-jar - \
+            --data "username=${qbt_username}&password=${qbt_password}" ${qbt_host}:${qbt_port}/api/v2/auth/login)
+    fi
+}
+
+get_app_preferences () {
+    get_cookie &&
+	qbt_app_preferences=$(echo "$qbt_cookie" | $curl_executable \
+		--cookie - \
+		--request GET "${qbt_host}:${qbt_port}/api/v2/app/preferences")
+}
+
+get_torrent_trackers () {
+	get_cookie &&
+	qbt_torrent_trackers=$(echo "$qbt_cookie" | $curl_executable \
+		--cookie - \
+		--request GET "${qbt_host}:${qbt_port}/api/v2/torrents/trackers?hash=${1}")
+}
