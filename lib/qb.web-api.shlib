@@ -10,17 +10,15 @@
 jq_executable="$(command -v jq)"
 curl_executable="$(command -v curl)"
 
-if [[ -z $jq_executable ]]; then
-	echo -e "${COLOR_RED}Fail on jq. Aborting.${COLOR_RESET}"
-	echo "You can find it here: https://stedolan.github.io/jq/"
-	echo "Or you can install it with -> sudo apt install jq"
-	exit 1
+if [[ ! -x $jq_executable ]]; then
+	fatal $EXIT_EXCEPTION "${COLOR_RED}Fail on jq. Aborting.${COLOR_RESET}" "\n" \
+	"You can find it here: https://stedolan.github.io/jq/"    "\n" \
+	"Or you can install it with -> sudo apt install jq"
 fi
 
-if [[ -z $curl_executable ]]; then
-	echo -e "${COLOR_RED}Fail on curl. Aborting.${COLOR_RESET}"
-	echo "You can install it with -> sudo apt install curl"
-	exit 1
+if [[ ! -x $curl_executable ]]; then
+	fatal $EXIT_EXCEPTION "${COLOR_RED}Fail on curl. Aborting.${COLOR_RESET}" "\n" \
+	"You can install it with -> sudo apt install curl"
 fi
 
 export jq_executable
@@ -34,7 +32,7 @@ get_cookie () {
         qbt_cookie=$($curl_executable \
             --header "Referer: ${qbt_host}:${qbt_port}" \
             --cookie-jar - \
-            --data "username=${qbt_username}&password=${qbt_password}" ${qbt_host}:${qbt_port}/api/v2/auth/login)
+            --data "username=${qbt_username}&password=${qbt_password}" ${qbt_host}:${qbt_port}/api/v2/auth/login) || exit $EXIT_ERROR
     fi
 }
 
@@ -42,12 +40,24 @@ get_app_preferences () {
     get_cookie &&
 	qbt_app_preferences=$(echo "$qbt_cookie" | $curl_executable \
 		--cookie - \
-		--request GET "${qbt_host}:${qbt_port}/api/v2/app/preferences")
+		--request GET "${qbt_host}:${qbt_port}/api/v2/app/preferences") || exit $EXIT_ERROR
+}
+
+set_app_preferences () {
+	local app_preferences="$1" # json format, e.g. {"save_path":"C:/Users/Dayman/Downloads","queueing_enabled":false,"scan_dirs":{"C:/Games": 0,"D:/Downloads": 1}}
+	echo "$app_preferences" | jq "" > /dev/null || exit $EXIT_ARGUMENT
+	get_cookie &&
+	qbt_webapi_response=$(echo "$qbt_cookie" | $curl_executable \
+        -d "json=$app_preferences" \
+		--cookie - \
+		--request POST "${qbt_host}:${qbt_port}/api/v2/app/setPreferences") || exit $EXIT_ERROR
 }
 
 get_torrent_trackers () {
+	local torrent_hash="$1"
+	[ -z "$torrent_hash" ] && fatal $EXIT_ARGUMENT 'Fail for argument#1 "torrent_hash" unfound'
 	get_cookie &&
 	qbt_torrent_trackers=$(echo "$qbt_cookie" | $curl_executable \
 		--cookie - \
-		--request GET "${qbt_host}:${qbt_port}/api/v2/torrents/trackers?hash=${1}")
+		--request GET "${qbt_host}:${qbt_port}/api/v2/torrents/trackers?hash=$torrent_hash") || exit $EXIT_ERROR
 }

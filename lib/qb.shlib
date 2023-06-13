@@ -1,6 +1,44 @@
 #!/bin/bash
 
+# exit
+export EXIT_OK=0
+export EXIT_ERROR=1        # cause by unknown
+export EXIT_EXCEPTION=2    # cause by env
+export EXIT_ARGUMENT=127   # cause by user
+
 # prints
 export COLOR_RED='\e[1;31m'
 export COLOR_GREEN='\e[1;32m'
 export COLOR_RESET='\e[0m'
+
+
+# print/log and immediately exit
+function fatal {
+  exit_status=${1:=$EXIT_ARGUMENT}
+  shift
+  echo -e "${@}" >&2
+  exit ${exit_status}
+}
+
+
+# print/log and continue execution
+function warn {
+  echo -e "${@}"
+}
+
+
+# print to screen and log (only active when DEBUG is 'true')
+function debug {
+  if [[ "$DEBUG" = 'true' ]]
+  then
+    if [[ $# -gt 0 ]]
+    then
+      echo -e "DEBUG: ${@}"
+    else
+      while read data
+      do
+        echo -e "DEBUG: ${data}"
+      done
+    fi
+  fi
+}

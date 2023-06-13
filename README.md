@@ -3,6 +3,13 @@ qbittorrent web-api: https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(
 
 jq tutorial: https://jqlang.github.io/jq/tutorial/
 
+## Test
+
+```bash
+cd ./test
+./test-example.sh 
+```
+
 ## Alternate
 
 + https://github.com/fedarovich/qbittorrent-cli —— qbt cli 
