@@ -11,14 +11,14 @@ jq_executable="$(command -v jq)"
 curl_executable="$(command -v curl)"
 
 if [[ ! -x $jq_executable ]]; then
-	fatal $EXIT_EXCEPTION "${COLOR_RED}Fail on jq. Aborting.${COLOR_RESET}" "\n" \
-	"You can find it here: https://stedolan.github.io/jq/"    "\n" \
-	"Or you can install it with -> sudo apt install jq"
+    fatal $EXIT_EXCEPTION "${COLOR_RED}Fail on jq. Aborting.${COLOR_RESET}" "\n" \
+    "You can find it here: https://stedolan.github.io/jq/"    "\n" \
+    "Or you can install it with -> sudo apt install jq"
 fi
 
 if [[ ! -x $curl_executable ]]; then
-	fatal $EXIT_EXCEPTION "${COLOR_RED}Fail on curl. Aborting.${COLOR_RESET}" "\n" \
-	"You can install it with -> sudo apt install curl"
+    fatal $EXIT_EXCEPTION "${COLOR_RED}Fail on curl. Aborting.${COLOR_RESET}" "\n" \
+    "You can install it with -> sudo apt install curl"
 fi
 
 export jq_executable
@@ -38,28 +38,28 @@ function get_cookie {
 
 function get_app_preferences {
     get_cookie &&
-	qbt_app_preferences=$(echo "$qbt_cookie" | $curl_executable \
-		--cookie - \
-		--request GET "${qbt_host}:${qbt_port}/api/v2/app/preferences") || exit $EXIT_ERROR
+    qbt_app_preferences=$(echo "$qbt_cookie" | $curl_executable \
+        --cookie - \
+        --request GET "${qbt_host}:${qbt_port}/api/v2/app/preferences") || exit $EXIT_ERROR
 }
 
 function set_app_preferences {
-	local app_preferences="$1" # json format, e.g. {"save_path":"C:/Users/Dayman/Downloads","queueing_enabled":false,"scan_dirs":{"C:/Games": 0,"D:/Downloads": 1}}
-	echo "$app_preferences" | jq "" > /dev/null || exit $EXIT_ARGUMENT
-	get_cookie &&
-	qbt_webapi_response=$(echo "$qbt_cookie" | $curl_executable \
+    local app_preferences="$1" # json format, e.g. {"save_path":"C:/Users/Dayman/Downloads","queueing_enabled":false,"scan_dirs":{"C:/Games": 0,"D:/Downloads": 1}}
+    echo "$app_preferences" | jq "" > /dev/null || exit $EXIT_ARGUMENT
+    get_cookie &&
+    qbt_webapi_response=$(echo "$qbt_cookie" | $curl_executable \
         -d "json=$app_preferences" \
-		--cookie - \
-		--request POST "${qbt_host}:${qbt_port}/api/v2/app/setPreferences") || exit $EXIT_ERROR
+        --cookie - \
+        --request POST "${qbt_host}:${qbt_port}/api/v2/app/setPreferences") || exit $EXIT_ERROR
 }
 
 function get_torrent_trackers {
-	local torrent_hash="$1"
-	[ -z "$torrent_hash" ] && fatal $EXIT_ARGUMENT 'Fail for argument#1 "torrent_hash" unfound'
-	get_cookie &&
-	qbt_torrent_trackers=$(echo "$qbt_cookie" | $curl_executable \
-		--cookie - \
-		--request GET "${qbt_host}:${qbt_port}/api/v2/torrents/trackers?hash=$torrent_hash") || exit $EXIT_ERROR
+    local torrent_hash="$1"
+    [ -z "$torrent_hash" ] && fatal $EXIT_ARGUMENT 'Fail for argument#1 "torrent_hash" unfound'
+    get_cookie &&
+    qbt_torrent_trackers=$(echo "$qbt_cookie" | $curl_executable \
+        --cookie - \
+        --request GET "${qbt_host}:${qbt_port}/api/v2/torrents/trackers?hash=$torrent_hash") || exit $EXIT_ERROR
 }
 
 function get_torrent_peers {
@@ -91,15 +91,20 @@ function get_torrents {
 # other functions
 function fetch_net_trackers {
     local fetch_urls="$@"
-	[ -z "$fetch_urls" ] && fatal $EXIT_ARGUMENT 'Fail for argument#1 "fetch_urls" unfound'
-	local tmp_tracker_list=""
-	for j in $fetch_urls; do
-		debug "fetch $j"
-		local tmp_fetch_result="$($curl_executable --connect-timeout 20 $j | grep -e '^http://' -e '^https://' -e '^udp://')"
-		if [ $? -eq 0 ] && [ -n "$tmp_fetch_result" ]; then
-			tmp_tracker_list+=$tmp_fetch_result
-			tmp_tracker_list+=$'\n'
-		fi
-	done
-	net_trackers="$(echo "$tmp_tracker_list" | awk '{for (i=1;i<=NF;i++) if (!a[$i]++) printf("%s%s",$i,FS)}{printf("\n")}' | xargs | tr ' ' '\n')"
+    [ -z "$fetch_urls" ] && fatal $EXIT_ARGUMENT 'Fail for argument#1 "fetch_urls" unfound'
+    local tmp_trackers=""
+    local tmp_exception_urls=()
+    for j in $fetch_urls; do
+        local tmp_fetch_result=""
+        tmp_fetch_result=$($curl_executable --connect-timeout 20 $j 2>&1)
+        if [ $? -ne 0 ] ; then
+            echo "Fail to fetch \"$j\" with issue: $tmp_fetch_result" >&2
+            tmp_exception_urls+=("$j")
+            continue
+        fi
+        tmp_trackers+="$(echo "$tmp_fetch_result" | grep -e '^http://' -e '^https://' -e '^udp://')"
+        tmp_trackers+=$'\n'
+    done
+    qbt_net_trackers="$(echo "$tmp_trackers" | awk '{for (i=1;i<=NF;i++) if (!a[$i]++) printf("%s%s",$i,FS)}{printf("\n")}' | xargs | tr ' ' '\n')"
+    qbt_net_exception_urls="${tmp_exception_urls[@]}"
 }
