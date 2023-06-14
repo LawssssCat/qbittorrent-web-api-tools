@@ -69,6 +69,18 @@ function get_torrent_peers {
         --cookie - \
         --request GET "${qbt_host}:${qbt_port}/api/v2/sync/torrentPeers?hash=$torrent_hash") || exit $EXIT_ERROR
 }
+
+function add_ban_peers {
+    local torrent_peers="$@" # Each peer is a colon-separated `host:port`. e.g. 11.11.11.11:6881
+    torrent_peers="$(echo $torrent_peers | tr " " "|")" # Multiple peers separated by a pipe `|`. e.g. 11.11.11.11:6881|12.12.12.12:6891
+    [ -z "$torrent_peers" ] && fatal $EXIT_ARGUMENT 'Fail for argument#1...n "torrent_peers" unfound'
+    get_cookie &&
+    qbt_webapi_response=$(echo "$qbt_cookie" | $curl_executable \
+        -d "peers=$torrent_peers" \
+        --cookie - \
+        --request POST "${qbt_host}:${qbt_port}/api/v2/transfer/banPeers")
+}
+
 function get_torrents {
     get_cookie &&
     qbt_torrents=$(echo "$qbt_cookie" | $curl_executable \
