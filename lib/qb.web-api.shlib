@@ -27,7 +27,7 @@ export curl_executable
 curl_executable="$curl_executable --silent --fail --show-error --connect-timeout 120"
 
 # qbittorrent web-api functions
-get_cookie () {
+function get_cookie {
     if [[ -z "$qbt_cookie" ]]; then
         qbt_cookie=$($curl_executable \
             --header "Referer: ${qbt_host}:${qbt_port}" \
@@ -36,14 +36,14 @@ get_cookie () {
     fi
 }
 
-get_app_preferences () {
+function get_app_preferences {
     get_cookie &&
 	qbt_app_preferences=$(echo "$qbt_cookie" | $curl_executable \
 		--cookie - \
 		--request GET "${qbt_host}:${qbt_port}/api/v2/app/preferences") || exit $EXIT_ERROR
 }
 
-set_app_preferences () {
+function set_app_preferences {
 	local app_preferences="$1" # json format, e.g. {"save_path":"C:/Users/Dayman/Downloads","queueing_enabled":false,"scan_dirs":{"C:/Games": 0,"D:/Downloads": 1}}
 	echo "$app_preferences" | jq "" > /dev/null || exit $EXIT_ARGUMENT
 	get_cookie &&
@@ -53,11 +53,27 @@ set_app_preferences () {
 		--request POST "${qbt_host}:${qbt_port}/api/v2/app/setPreferences") || exit $EXIT_ERROR
 }
 
-get_torrent_trackers () {
+function get_torrent_trackers {
 	local torrent_hash="$1"
 	[ -z "$torrent_hash" ] && fatal $EXIT_ARGUMENT 'Fail for argument#1 "torrent_hash" unfound'
 	get_cookie &&
 	qbt_torrent_trackers=$(echo "$qbt_cookie" | $curl_executable \
 		--cookie - \
 		--request GET "${qbt_host}:${qbt_port}/api/v2/torrents/trackers?hash=$torrent_hash") || exit $EXIT_ERROR
+}
+
+# other functions
+function fetch_net_trackers {
+    local fetch_urls="$@"
+	[ -z "$fetch_urls" ] && fatal $EXIT_ARGUMENT 'Fail for argument#1 "fetch_urls" unfound'
+	local tmp_tracker_list=""
+	for j in $fetch_urls; do
+		debug "fetch $j"
+		local tmp_fetch_result="$($curl_executable --connect-timeout 20 $j | grep -e '^http://' -e '^https://' -e '^udp://')"
+		if [ $? -eq 0 ] && [ -n "$tmp_fetch_result" ]; then
+			tmp_tracker_list+=$tmp_fetch_result
+			tmp_tracker_list+=$'\n'
+		fi
+	done
+	net_trackers="$(echo "$tmp_tracker_list" | awk '{for (i=1;i<=NF;i++) if (!a[$i]++) printf("%s%s",$i,FS)}{printf("\n")}' | xargs | tr ' ' '\n')"
 }

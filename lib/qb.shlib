@@ -29,7 +29,7 @@ function warn {
 
 # print to screen and log (only active when DEBUG is 'true')
 function debug {
-  if [[ "$DEBUG" = 'true' ]]
+  if [[ "$QBT_DEBUG" = 'true' ]]
   then
     if [[ $# -gt 0 ]]
     then

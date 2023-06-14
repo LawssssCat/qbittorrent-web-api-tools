@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # prints
-export COLOR_RED='\e[1;31m'
-export COLOR_GREEN='\e[1;32m'
-export COLOR_RESET='\e[0m'
+COLOR_RED='\e[1;31m'
+COLOR_GREEN='\e[1;32m'
+COLOR_RESET='\e[0m'
 
 ############## context ############## 
-
+test_env_file="./set-env.sh" ; [ -f "$test_env_file" ] && source "$test_env_file"
 cd ../example
 
 example_index=0
