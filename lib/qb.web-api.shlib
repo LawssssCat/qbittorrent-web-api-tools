@@ -62,6 +62,13 @@ function get_torrent_trackers {
 		--request GET "${qbt_host}:${qbt_port}/api/v2/torrents/trackers?hash=$torrent_hash") || exit $EXIT_ERROR
 }
 
+function get_torrent_peers {
+    local torrent_hash="$1"
+    get_cookie &&
+    qbt_torrent_peers=$(echo "$qbt_cookie" | $curl_executable \
+        --cookie - \
+        --request GET "${qbt_host}:${qbt_port}/api/v2/sync/torrentPeers?hash=$torrent_hash") || exit $EXIT_ERROR
+}
 function get_torrents {
     get_cookie &&
     qbt_torrents=$(echo "$qbt_cookie" | $curl_executable \
