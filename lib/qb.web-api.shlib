@@ -59,7 +59,15 @@ function get_torrent_trackers {
     get_cookie &&
     qbt_torrent_trackers=$(echo "$qbt_cookie" | $curl_executable \
         --cookie - \
-        --request GET "${qbt_host}:${qbt_port}/api/v2/torrents/trackers?hash=$torrent_hash") || exit $EXIT_ERROR
+        --request GET "${qbt_host}:${qbt_port}/api/v2/torrents/trackers?hash=$torrent_hash" 2>&1) 
+    if [ $? -ne 0 ]; then
+        if [ "$qbt_torrent_trackers" == 'curl: (22) The requested URL returned error: 404' ]; then
+            echo "$qbt_torrent_trackers —— issue may be hash \"$torrent_hash\" unfound." >&2
+        else
+            echo "$qbt_torrent_trackers" >&2
+        fi
+        exit $EXIT_ERROR
+    fi
 }
 
 function get_torrent_peers {
