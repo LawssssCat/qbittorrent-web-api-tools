@@ -7,7 +7,7 @@ source ./set-env.sh
 source ../lib/qb.shlib
 source ../lib/qb.web-api.shlib
 
-echo "the peers ready to ban"
+echo "=========== the peers ready to ban ==========="
 : ${example__add_ban_peers__ban_peers:="11.11.11.11:6881 22.22.22.22:6882"}
 echo "$example__add_ban_peers__ban_peers"
 
