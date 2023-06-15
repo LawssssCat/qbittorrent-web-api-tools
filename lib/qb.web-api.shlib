@@ -108,3 +108,28 @@ function fetch_net_trackers {
     qbt_net_trackers="$(echo "$tmp_trackers" | awk '{for (i=1;i<=NF;i++) if (!a[$i]++) printf("%s%s",$i,FS)}{printf("\n")}' | xargs | tr ' ' '\n')"
     qbt_net_exception_urls="${tmp_exception_urls[@]}"
 }
+
+function get_matching_peers {
+    local pattern="$1"
+    # torrents
+    local qbt_torrent_hashs=""
+    get_torrents && qbt_torrent_hashs="$(echo "$qbt_torrents" | $jq_executable ".[].hash" -r)" || exit 1
+    # peers
+    local tmp_mached_peers=""
+    for h in $qbt_torrent_hashs; do 
+        get_torrent_peers "$h" && 
+        local tmp_peers=""
+        tmp_mached_peers+="$(echo "$qbt_torrent_peers" \
+        | $jq_executable ".peers | to_entries[] | {\
+            id:.key,\
+            client:.value.client,\
+            peer_id_client:.value.peer_id_client,\
+            connection:.value.connection,\
+            country:.value.country_code\
+            }" -c \
+        | grep -E "$pattern"
+        )" &&
+        tmp_mached_peers+=$'\n'
+    done
+    qbt_mached_peers="$(echo "$tmp_mached_peers" | awk '{for (i=1;i<=NF;i++) if (!a[$i]++) printf("%s%s",$i,FS)}{printf("\n")}' | grep -v "^$")"
+}

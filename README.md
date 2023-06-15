@@ -30,6 +30,8 @@ fetch_net_trackers "http://example1.com https://example2.com"
 set_app_preferences "{\"add_trackers\":\"$qbt_net_trackers\"}"
 ```
 
+e.g. ban peers that look like they are from XunLei —— `get_matching_peers.sh`
+
 e.g. clean banned peers
 
 ```bash
