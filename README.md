@@ -23,12 +23,7 @@ source ../lib/qb.web-api.shlib
 
 call functions
 
-e.g. fetch tracker from net and set it to app preference "add_trackers".
-
-```bash
-fetch_net_trackers "http://example1.com https://example2.com"
-set_app_preferences "{\"add_trackers\":\"$qbt_net_trackers\"}"
-```
+e.g. fetch tracker from net and set it to app preference "add_trackers". —— `fetch_net_trackers.sh`,`set_app_trackers.sh`
 
 e.g. ban peers that look like they are from XunLei —— `get_matching_peers.sh`
 
@@ -46,10 +41,12 @@ $ ./test-example.sh
  · EXAMPLE_0: add_ban_peers.sh .................................  SUCCESS
  · EXAMPLE_1: fetch_net_trackers.sh ............................  SUCCESS
  · EXAMPLE_2: get_app_preferences.sh ...........................  SUCCESS
- · EXAMPLE_3: get_torrent_peers.sh .............................  SUCCESS
- · EXAMPLE_4: get_torrents.sh ..................................  SUCCESS
- · EXAMPLE_5: get_torrent_trackers.sh ..........................  SUCCESS
- · EXAMPLE_6: set_app_preferences.sh ...........................  SUCCESS
+ · EXAMPLE_3: get_matching_peers.sh ............................  SUCCESS
+ · EXAMPLE_4: get_torrent_peers.sh .............................  SUCCESS
+ · EXAMPLE_5: get_torrents.sh ..................................  SUCCESS
+ · EXAMPLE_6: get_torrent_trackers.sh ..........................  SUCCESS
+ · EXAMPLE_7: set_app_preferences.sh ...........................  SUCCESS
+ · EXAMPLE_8: set_app_trackers.sh ..............................  SUCCESS
 ```
 
 ## Alternate

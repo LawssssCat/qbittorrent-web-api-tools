@@ -12,7 +12,7 @@ echo "=========== pattern ==========="
 echo "$example__get_matching_peers__matching_pattern"
 
 echo "=========== torrent hash ==========="
-get_matching_peers "$example__get_matching_peers__matching_pattern" && echo "$qbt_mached_peers"
+get_matching_peers "$example__get_matching_peers__matching_pattern" && echo "$qbt_mached_peers" || exit 1
 
 echo "=========== torrent hash id ==========="
 echo "$qbt_mached_peers" | $jq_executable ".key" -r

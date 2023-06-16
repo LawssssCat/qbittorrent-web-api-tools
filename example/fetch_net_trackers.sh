@@ -20,7 +20,7 @@ fetch_urls=(
 echo "${fetch_urls[@]}" | tr " " "\n"
 
 echo "=========== fetch ==========="
-fetch_net_trackers "${fetch_urls[@]}"
+fetch_net_trackers "${fetch_urls[@]}" || exit 1
 
 echo "=========== result ==========="
 echo "$qbt_net_trackers"

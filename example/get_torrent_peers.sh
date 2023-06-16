@@ -8,10 +8,10 @@ source ../lib/qb.shlib
 source ../lib/qb.web-api.shlib
 
 echo "=========== raw ==========="
-get_torrents && echo "$qbt_torrents"
+get_torrents && echo "$qbt_torrents" || exit 1
 
 echo "=========== the list of torrent hash ==========="
-qbt_torrent_hashs="$(echo "$qbt_torrents" | $jq_executable ".[].hash" -r)" 
+qbt_torrent_hashs="$(echo "$qbt_torrents" | $jq_executable ".[].hash" -r)" || exit 1
 echo "$qbt_torrent_hashs"
 
 echo "=========== the list of peers of torrent hash ==========="
