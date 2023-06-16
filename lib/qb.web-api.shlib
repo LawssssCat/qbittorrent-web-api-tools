@@ -128,13 +128,7 @@ function get_matching_peers {
         get_torrent_peers "$h" && 
         local tmp_peers=""
         tmp_mached_peers+="$(echo "$qbt_torrent_peers" \
-        | $jq_executable ".peers | to_entries[] | {\
-            id:.key,\
-            client:.value.client,\
-            peer_id_client:.value.peer_id_client,\
-            connection:.value.connection,\
-            country:.value.country_code\
-            }" -c \
+        | $jq_executable ".peers | to_entries[]" -c \
         | grep -E "$pattern"
         )" &&
         tmp_mached_peers+=$'\n'
