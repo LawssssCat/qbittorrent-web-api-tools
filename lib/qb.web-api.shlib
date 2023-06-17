@@ -90,10 +90,15 @@ function add_ban_peers {
 }
 
 function get_torrents {
+    # params - https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#get-torrent-list
+    local params="$1" # e.g. filter=downloading&category=sample%20category&sort=ratio
+    if [ -n "$params" ]; then
+        params="?$params"
+    fi
     get_cookie &&
     qbt_torrents=$(echo "$qbt_cookie" | $curl_executable \
         --cookie - \
-        --request GET "${qbt_host}:${qbt_port}/api/v2/torrents/info")
+        --request GET "${qbt_host}:${qbt_port}/api/v2/torrents/info${params}")
 }
 
 # other functions
@@ -113,15 +118,15 @@ function fetch_net_trackers {
         tmp_trackers+="$(echo "$tmp_fetch_result" | grep -e '^http://' -e '^https://' -e '^udp://')"
         tmp_trackers+=$'\n'
     done
-    qbt_net_trackers="$(echo "$tmp_trackers" | awk '!a[$0]++{print}' | grep -E -v '^( )*$')"
+    qbt_net_trackers="$(echo "$tmp_trackers"| grep -E -v '^( )*$' | awk '!a[$0]++{print}')"
     qbt_net_exception_urls="${tmp_exception_urls[@]}"
 }
 
 function get_matching_peers {
-    local pattern="$1"
+    local pattern_peer="$1"
     # torrents
     local qbt_torrent_hashs=""
-    get_torrents && qbt_torrent_hashs="$(echo "$qbt_torrents" | $jq_executable ".[].hash" -r)" || exit 1
+    get_torrents "filter=active" && qbt_torrent_hashs="$(echo "$qbt_torrents" | $jq_executable ".[].hash" -r)" || exit 1
     # peers
     local tmp_mached_peers=""
     for h in $qbt_torrent_hashs; do 
@@ -129,9 +134,9 @@ function get_matching_peers {
         local tmp_peers=""
         tmp_mached_peers+="$(echo "$qbt_torrent_peers" \
         | $jq_executable ".peers | to_entries[]" -c \
-        | grep -E "$pattern"
+        | grep -E "$pattern_peer"
         )" &&
         tmp_mached_peers+=$'\n'
     done
-    qbt_mached_peers="$(echo "$tmp_mached_peers" | awk '!a[$0]++{print}' | grep -E -v '^( )*$')"
+    qbt_mached_peers="$(echo "$tmp_mached_peers" | grep -E -v '^( )*$' | awk '!a[$0]++{print}')" 
 }

@@ -7,8 +7,19 @@ source ./set-env.sh
 source ../lib/qb.shlib
 source ../lib/qb.web-api.shlib
 
-echo "=========== raw ==========="
-get_torrents && echo "$qbt_torrents" || exit 1
+echo "=========== search params ==========="
+qbt_torrent_search_filter="active"
+qbt_torrent_search_params="filter=$qbt_torrent_search_filter"
+echo "$qbt_torrent_search_params"
+
+echo "=========== the list of torrent ==========="
+get_torrents "$qbt_torrent_search_params" && 
+qbt_torrents="$(echo "$qbt_torrents")" || exit 1
+if [ -z "$qbt_torrents" ]; then
+    echo "Torrent Unfound. Please ensure that at least one torrent is active." >&2
+    exit 1
+fi
+echo "$qbt_torrents" 
 
 echo "=========== the list of torrent hash ==========="
 qbt_torrent_hashs="$(echo "$qbt_torrents" | $jq_executable ".[].hash" -r)" || exit 1
