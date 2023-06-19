@@ -118,7 +118,7 @@ function fetch_net_trackers {
         tmp_trackers+="$(echo "$tmp_fetch_result" | grep -e '^http://' -e '^https://' -e '^udp://')"
         tmp_trackers+=$'\n'
     done
-    qbt_net_trackers="$(echo "$tmp_trackers"| grep -E -v '^( )*$' | awk '!a[$0]++{print}')"
+    qbt_net_trackers="$(echo "$tmp_trackers" | lines_trim | lines_unique)"
     qbt_net_exception_urls="${tmp_exception_urls[@]}"
 }
 
@@ -138,5 +138,5 @@ function get_matching_peers {
         )" &&
         tmp_mached_peers+=$'\n'
     done
-    qbt_mached_peers="$(echo "$tmp_mached_peers" | grep -E -v '^( )*$' | awk '!a[$0]++{print}')" 
+    qbt_mached_peers="$(echo "$tmp_mached_peers" | lines_trim | lines_unique)" 
 }

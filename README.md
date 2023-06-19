@@ -23,11 +23,11 @@ source ../lib/qb.web-api.shlib
 
 call functions
 
-e.g. fetch tracker from net and set it to app preference "add_trackers". —— `fetch_net_trackers.sh`,`set_app_trackers.sh`
+e.g. fetch tracker from net and set it to app preference "add_trackers". —— `add_trackers_fetch.sh`,`add_trackers_set.sh`
 
-e.g. ban peers that look like they are from XunLei —— `get_matching_peers.sh`
+e.g. ban peers that look like they are from XunLei —— `ban_peers_matching.sh`,`ban_peers_add.sh`
 
-e.g. clean banned peers
+e.g. clean banned peers —— `ban_peers_clean.sh`
 
 ```bash
 set_app_preferences '{"banned_IPs":""}'
@@ -38,15 +38,15 @@ set_app_preferences '{"banned_IPs":""}'
 ```bash
 $ cd ./test
 $ ./test-example.sh
- · EXAMPLE_0: add_ban_peers.sh .................................  SUCCESS
- · EXAMPLE_1: fetch_net_trackers.sh ............................  SUCCESS
- · EXAMPLE_2: get_app_preferences.sh ...........................  SUCCESS
- · EXAMPLE_3: get_matching_peers.sh ............................  SUCCESS
- · EXAMPLE_4: get_torrent_peers.sh .............................  SUCCESS
- · EXAMPLE_5: get_torrents.sh ..................................  SUCCESS
- · EXAMPLE_6: get_torrent_trackers.sh ..........................  SUCCESS
- · EXAMPLE_7: set_app_preferences.sh ...........................  SUCCESS
- · EXAMPLE_8: set_app_trackers.sh ..............................  SUCCESS
+ · EXAMPLE_0: add_trackers_fetch.sh ............................  SUCCESS
+ · EXAMPLE_1: add_trackers_set.sh ..............................  SUCCESS
+ · EXAMPLE_2: app_preferences_get.sh ...........................  SUCCESS
+ · EXAMPLE_3: ban_peers_add.sh .................................  SUCCESS
+ · EXAMPLE_4: ban_peers_clean.sh ...............................  SUCCESS
+ · EXAMPLE_5: ban_peers_matching.sh ............................  SUCCESS
+ · EXAMPLE_6: torrent_peers_get.sh .............................  SUCCESS
+ · EXAMPLE_7: torrent_trackers_get.sh ..........................  SUCCESS
+ · EXAMPLE_8: torrents_get.sh ..................................  SUCCESS
 ```
 
 ## Alternate

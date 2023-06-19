@@ -15,7 +15,7 @@ qbt_torrent_hashs="$(echo "$qbt_torrents" | $jq_executable ".[].hash" -r)" || ex
 echo "$qbt_torrent_hashs"
 
 echo "=========== select a hash ==========="
-if [ "$(echo "$qbt_torrent_hashs" | wc -l)" -le 0 ]; then
+if [ "$(lines_number "$qbt_torrent_hashs")" -le 0 ]; then
     echo "Please add a torrent first." >&2
     exit 1
 fi

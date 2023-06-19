@@ -8,8 +8,7 @@ source ../lib/qb.shlib
 source ../lib/qb.web-api.shlib
 
 echo "=========== search params ==========="
-qbt_torrent_search_filter="active"
-qbt_torrent_search_params="filter=$qbt_torrent_search_filter"
+qbt_torrent_search_params="filter=$active"
 echo "$qbt_torrent_search_params"
 
 echo "=========== the list of torrent ==========="

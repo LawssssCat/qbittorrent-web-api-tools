@@ -42,3 +42,30 @@ function debug {
     fi
   fi
 }
+
+###
+# lines tools
+###
+
+function lines_arg {
+  if [[ $# -gt 0 ]]; then
+    echo "${@}"
+  else
+    while read data
+    do
+      echo "${data}"
+    done
+  fi
+}
+
+function lines_trim {
+  lines_arg "$@" | sed '/^ *$/d'
+}
+
+function lines_number {
+  lines_arg "$@" | lines_trim | wc -l
+}
+
+function lines_unique {
+  lines_arg "$@" | awk '!a[$0]++{print}'
+}

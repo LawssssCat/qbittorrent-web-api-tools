@@ -27,8 +27,8 @@ qbt_app_trackers_now=$(echo "$qbt_app_preferences" | $jq_executable ".add_tracke
 echo "$qbt_app_trackers_now"
 
 echo "=========== judge the result ==========="
-num_fetch="$(echo "$qbt_net_trackers" | grep -E -v '^( )*$' | wc -l)"
-num_app="$(echo "$qbt_app_trackers_now" | grep -E -v '^( )*$' | wc -l)"
+num_fetch="$(lines_number "$qbt_net_trackers")"
+num_app="$(lines_number "$qbt_app_trackers_now")"
 if [ "$num_fetch" -eq "$num_app" ]; then
     echo "ok!"
 else 
