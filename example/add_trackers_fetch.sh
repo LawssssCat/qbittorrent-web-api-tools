@@ -23,15 +23,20 @@ echo "=========== fetch ==========="
 fetch_net_trackers "${fetch_urls[@]}" || exit 1
 
 echo "=========== result ==========="
-if [ -z "$qbt_net_trackers" ]; then
-    echo "Trackers Unfound." >&2
-    exit 1
-fi
 echo "$qbt_net_trackers"
 
 echo "=========== exception ==========="
-exception_urls="$(echo "$qbt_net_exception_urls" | tr ' ' '\n' | grep -v -e 'example')"
-if [ -n "$exception_urls" ]; then
-    echo "$exception_urls"
+qbt_fetch_exception=0
+
+for ((i=0; i<${#qbt_net_exception_urls[@]}; i++)); do
+    if [ -n "$(echo "${qbt_net_exception_issues[$i]}" | grep -v -e 'example')" ]; then
+        qbt_fetch_exception=1
+        echo "Fail to fetch \"${qbt_net_exception_urls[$i]}\" with issue: ${qbt_net_exception_issues[$i]}" >&2
+    fi
+done
+
+if [ "$qbt_fetch_exception" -eq 1 ]; then
     exit 1
+else
+    echo "No exceptions"
 fi

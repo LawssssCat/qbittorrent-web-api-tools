@@ -106,20 +106,20 @@ function fetch_net_trackers {
     local fetch_urls="$@"
     [ -z "$fetch_urls" ] && fatal $EXIT_ARGUMENT 'Fail for argument#1 "fetch_urls" unfound'
     local tmp_trackers=""
-    local tmp_exception_urls=()
+    qbt_net_exception_urls=() # todo local
+    qbt_net_exception_issues=()
     for j in $fetch_urls; do
         local tmp_fetch_result=""
         tmp_fetch_result=$($curl_executable --connect-timeout 20 $j 2>&1)
         if [ $? -ne 0 ] ; then
-            echo "Fail to fetch \"$j\" with issue: $tmp_fetch_result" >&2
-            tmp_exception_urls+=("$j")
+            qbt_net_exception_urls+=("$j")
+            qbt_net_exception_issues+=("$tmp_fetch_result")
             continue
         fi
         tmp_trackers+="$(echo "$tmp_fetch_result" | grep -e '^http://' -e '^https://' -e '^udp://')"
         tmp_trackers+=$'\n'
     done
     qbt_net_trackers="$(echo "$tmp_trackers" | lines_trim | lines_unique)"
-    qbt_net_exception_urls="${tmp_exception_urls[@]}"
 }
 
 function get_matching_peers {
