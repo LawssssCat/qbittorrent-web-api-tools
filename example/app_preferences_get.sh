@@ -7,13 +7,26 @@ source ./set-env.sh
 source ../lib/qb.shlib
 source ../lib/qb.web-api.shlib
 
-echo "=========== raw ==========="
-get_app_preferences && echo "$qbt_app_preferences" || exit 1
+echo "=========== get app preferences ==========="
+get_app_preferences && {
+    echo "response status:"
+    echo "$qbt_webapi_response_status"
+    echo "preferences:"
+    qbt_app_preferences=$qbt_webapi_response_body
+    echo "$qbt_app_preferences"
+} || {
+    echo "response status:"
+    echo "$qbt_webapi_response_status"
+    echo "error message:"
+    echo "$qbt_webapi_response_error"
+    exit $EXIT_ERROR
+} >&2
 
-echo "=========== json format ==========="
-echo "$qbt_app_preferences" | $jq_executable "." || exit 1
+echo "=========== json parse: web_ui info ==========="
+echo "$qbt_app_preferences" | $jq_executable "{web_ui_address,web_ui_port}" || {
+    echo "Fail: not a json format."
+    exit $EXIT_ERROR
+} >&2
 
-echo "=========== add_trackers ==========="
+echo "=========== json parse: pick add_trackers_enabled ==========="
 echo "$qbt_app_preferences" | $jq_executable "{add_trackers_enabled,add_trackers}"
-echo "=========== the value of add_trackers ==========="
-echo "$qbt_app_preferences" | $jq_executable ".add_trackers" -r

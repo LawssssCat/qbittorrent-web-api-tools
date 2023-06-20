@@ -26,49 +26,125 @@ export curl_executable
 
 curl_executable="$curl_executable --silent --fail --show-error --connect-timeout 120"
 
+###
 # qbittorrent web-api functions
-# https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#add-trackers-to-torrent
+###
+
+#
+# call qbittorrent webui api. 
+#
+# env:
+# + ${qbt_host} -- webui host. e.g. http://127.0.0.1
+# + ${qbt_port} -- webui port. e.g. 8080
+#
+# function:
+# call_web_api <method> <uri> <body> [curl options...]
+#
+# return:
+# + qbt_webapi_response_status -- response status code
+# + qbt_webapi_response_error  -- response error message
+# + qbt_webapi_response_body   -- response body string
+#
+function call_web_api {
+    local request_method="$1" # GET/POST
+    local request_path="${qbt_host}:${qbt_port}/${2/\/}"
+    local request_body="$3"
+    shift $(($#>3 ? 3 : $#))
+    local curl_opts="$@"
+
+    local qbt_webapi_response=""
+    qbt_webapi_response=$(echo "$qbt_cookie" | $curl_executable \
+        $curl_opts \
+        --data "$request_body" \
+        --write-out "\n%{http_code}" \
+        --cookie - \
+        --request $request_method "$request_path" 2>&1)
+    local qbt_webapi_request_return="$?"
+    debug "$request_method $request_path <--> \"$qbt_webapi_response\""
+
+    reset_web_api_response # reset
+    if [ $qbt_webapi_request_return -eq 0 ]; then
+        qbt_webapi_response_body="$(echo "$qbt_webapi_response" | head -n -1)"
+        qbt_webapi_response_status="$(echo "$qbt_webapi_response" | tail -n 1)"
+    else
+        qbt_webapi_response_error="$(echo "$qbt_webapi_response" | head -n -1)"
+        qbt_webapi_response_status="$(echo "$qbt_webapi_response" | tail -n 1)"
+    fi
+    return $qbt_webapi_request_return
+}
+
+function reset_web_api_response {
+    qbt_webapi_response_error=""
+    qbt_webapi_response_body=""
+    qbt_webapi_response_status=""
+}
+
+# https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#login
+# 403	User's IP is banned for too many failed login attempts
+# 200	All other scenarios
 function get_cookie {
-    if [[ -z "$qbt_cookie" ]]; then
-        qbt_cookie=$($curl_executable \
-            --header "Referer: ${qbt_host}:${qbt_port}" \
-            --cookie-jar - \
-            --data "username=${qbt_username}&password=${qbt_password}" ${qbt_host}:${qbt_port}/api/v2/auth/login) || exit $EXIT_ERROR
+    if [ -n "$qbt_cookie" ]; then
+        reset_web_api_response
+        qbt_webapi_response_body="$qbt_cookie"
+        qbt_webapi_response_status="200"
+        return $EXIT_OK
+    fi
+    local qbt_cookie_path='/tmp/qbittorrent-web-api-tools-cookie'
+    call_web_api "POST" "/api/v2/auth/login" "username=${qbt_username}&password=${qbt_password}" --cookie-jar "$qbt_cookie_path"
+    if [ "$qbt_webapi_response_status" -eq 200 ] && [ "$qbt_webapi_response_body" == "Ok." ]; then
+        qbt_cookie="$(cat $qbt_cookie_path)"
+        return $EXIT_OK
+    elif [ "$qbt_webapi_response_status" -eq 200 ] && [ "$qbt_webapi_response_body" == "Fails." ]; then
+        qbt_webapi_response_error="Login fail; $qbt_webapi_response_error"
+        return $EXIT_ERROR
+    elif [ "$qbt_webapi_response_status" -eq 403 ]; then
+        qbt_webapi_response_error="User's IP is banned for too many failed login attempts.; $qbt_webapi_response_error"
+        return $EXIT_ERROR
+    else
+        qbt_webapi_response_error="Unknown error; $qbt_webapi_response_error"
+        return $EXIT_ERROR
     fi
 }
 
+# https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#get-application-preferences
+# 200	All scenarios- see JSON below
 function get_app_preferences {
-    get_cookie &&
-    qbt_app_preferences=$(echo "$qbt_cookie" | $curl_executable \
-        --cookie - \
-        --request GET "${qbt_host}:${qbt_port}/api/v2/app/preferences") || exit $EXIT_ERROR
+    get_cookie || return $?
+    call_web_api "GET" "/api/v2/app/preferences" ""
+    if [ "$qbt_webapi_response_status" -eq 200 ]; then
+        return $EXIT_OK
+    else
+        qbt_webapi_response_error="Unknown error; $qbt_webapi_response_error"
+        return $EXIT_ERROR
+    fi
 }
 
+# https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#set-application-preferences
+# 200	All scenarios
 function set_app_preferences {
     local app_preferences="$1" # json format, e.g. {"save_path":"C:/Users/Dayman/Downloads","queueing_enabled":false,"scan_dirs":{"C:/Games": 0,"D:/Downloads": 1}}
-    echo "$app_preferences" | jq "" > /dev/null || exit $EXIT_ARGUMENT
-    get_cookie &&
-    qbt_webapi_response=$(echo "$qbt_cookie" | $curl_executable \
-        -d "json=$app_preferences" \
-        --cookie - \
-        --request POST "${qbt_host}:${qbt_port}/api/v2/app/setPreferences") || exit $EXIT_ERROR
+    get_cookie || return $?
+    call_web_api "POST" "/api/v2/app/setPreferences" "json=$app_preferences"
+    if [ "$qbt_webapi_response_status" -eq 200 ]; then
+        return $EXIT_OK
+    else
+        qbt_webapi_response_error="Unknown error; $qbt_webapi_response_error"
+        return $EXIT_ERROR
+    fi
 }
 
 function get_torrent_trackers {
-    local torrent_hash="$1"
+    local torrent_hash="$1" # e.g. 8c212779b4abde7c6bc608063a0d008b7e40ce32
     [ -z "$torrent_hash" ] && fatal $EXIT_ARGUMENT 'Fail for argument#1 "torrent_hash" unfound'
+    # 404 -- Torrent hash was not found
+    # 200 -- All other scenarios - see https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#get-torrent-trackers
     get_cookie &&
-    qbt_torrent_trackers=$(echo "$qbt_cookie" | $curl_executable \
+    qbt_webapi_response=$(echo "$qbt_cookie" | $curl_executable \
         --cookie - \
-        --request GET "${qbt_host}:${qbt_port}/api/v2/torrents/trackers?hash=$torrent_hash" 2>&1) 
-    if [ $? -ne 0 ]; then
-        if [ "$qbt_torrent_trackers" == 'curl: (22) The requested URL returned error: 404' ]; then
-            echo "$qbt_torrent_trackers —— issue may be hash \"$torrent_hash\" unfound." >&2
-        else
-            echo "$qbt_torrent_trackers" >&2
-        fi
-        exit $EXIT_ERROR
-    fi
+        -w "%{http_code}\n" \
+        --request GET "${qbt_host}:${qbt_port}/api/v2/torrents/trackers?hash=$torrent_hash")
+
+    qbt_torrent_trackers=$qbt_webapi_response_body
 }
 
 function add_torrent_trackers {
@@ -80,7 +156,7 @@ function add_torrent_trackers {
     qbt_webapi_response=$(echo "$qbt_cookie" | $curl_executable \
         -d "hash=$torrent_hash&urls=$tracker_urls" \
         --cookie - \
-        --request POST "${qbt_host}:${qbt_port}/api/v2/torrents/addTrackers") || exit $EXIT_ERROR
+        --request POST "${qbt_host}:${qbt_port}/api/v2/torrents/addTrackers") || return $EXIT_ERROR
 }
 
 function remove_torrent_trackers {
@@ -93,7 +169,7 @@ function remove_torrent_trackers {
     qbt_webapi_response=$(echo "$qbt_cookie" | $curl_executable \
         -d "hash=$torrent_hash&urls=$tracker_urls" \
         --cookie - \
-        --request POST "${qbt_host}:${qbt_port}/api/v2/torrents/removeTrackers") || exit $EXIT_ERROR
+        --request POST "${qbt_host}:${qbt_port}/api/v2/torrents/removeTrackers") || return $EXIT_ERROR
 }
 
 function get_torrent_peers {
@@ -101,7 +177,7 @@ function get_torrent_peers {
     get_cookie &&
     qbt_torrent_peers=$(echo "$qbt_cookie" | $curl_executable \
         --cookie - \
-        --request GET "${qbt_host}:${qbt_port}/api/v2/sync/torrentPeers?hash=$torrent_hash") || exit $EXIT_ERROR
+        --request GET "${qbt_host}:${qbt_port}/api/v2/sync/torrentPeers?hash=$torrent_hash") || return $EXIT_ERROR
 }
 
 function add_ban_peers {
@@ -133,7 +209,7 @@ function reannounce_torrent {
     get_cookie &&
     qbt_webapi_response=$(echo "$qbt_cookie" | $curl_executable \
         --cookie - \
-        --request GET "${qbt_host}:${qbt_port}/api/v2/torrents/reannounce?hashes=$torrent_hash") || exit $EXIT_ERROR
+        --request GET "${qbt_host}:${qbt_port}/api/v2/torrents/reannounce?hashes=$torrent_hash") || return $EXIT_ERROR
 }
 
 # other functions
@@ -161,7 +237,7 @@ function get_matching_peers {
     local pattern_peer="$1"
     # torrents
     local qbt_torrent_hashs=""
-    get_torrents "filter=active" && qbt_torrent_hashs="$(echo "$qbt_torrents" | $jq_executable ".[].hash" -r)" || exit 1
+    get_torrents "filter=active" && qbt_torrent_hashs="$(echo "$qbt_torrents" | $jq_executable ".[].hash" -r)" || return $EXIT_ERROR
     # peers
     local tmp_mached_peers=""
     for h in $qbt_torrent_hashs; do 

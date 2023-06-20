@@ -24,8 +24,14 @@ echo "$qbt_preferences_json"
 set_app_preferences "$qbt_preferences_json" || exit 1
 
 echo "=========== \"add_trackers\" in app ==========="
-get_app_preferences && 
-qbt_app_trackers_now=$(echo "$qbt_app_preferences" | $jq_executable ".add_trackers" -r) || exit 1
+get_app_preferences || {
+    echo "response status:"
+    echo "$qbt_webapi_response_status"
+    echo "error message:"
+    echo "$qbt_webapi_response_error"
+    exit $EXIT_ERROR
+} >&2
+qbt_app_trackers_now=$(echo "$qbt_webapi_response_body" | $jq_executable ".add_trackers" -r) || exit 1
 echo "$qbt_app_trackers_now"
 
 echo "=========== judge the result ==========="
