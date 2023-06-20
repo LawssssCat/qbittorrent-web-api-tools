@@ -27,6 +27,7 @@ export curl_executable
 curl_executable="$curl_executable --silent --fail --show-error --connect-timeout 120"
 
 # qbittorrent web-api functions
+# https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#add-trackers-to-torrent
 function get_cookie {
     if [[ -z "$qbt_cookie" ]]; then
         qbt_cookie=$($curl_executable \
@@ -70,6 +71,31 @@ function get_torrent_trackers {
     fi
 }
 
+function add_torrent_trackers {
+    local torrent_hash="$1" # e.g. 8c212779b4abde7c6bc608063a0d008b7e40ce32
+    local tracker_urls="$2" # e.g. http://192.168.0.1/announce%0Audp://192.168.0.1:3333/dummyAnnounce
+    # 404 -- Torrent hash was not found
+    # 200 -- All other scenarios
+    get_cookie &&
+    qbt_webapi_response=$(echo "$qbt_cookie" | $curl_executable \
+        -d "hash=$torrent_hash&urls=$tracker_urls" \
+        --cookie - \
+        --request POST "${qbt_host}:${qbt_port}/api/v2/torrents/addTrackers") || exit $EXIT_ERROR
+}
+
+function remove_torrent_trackers {
+    local torrent_hash="$1" # e.g. 8c212779b4abde7c6bc608063a0d008b7e40ce32
+    local tracker_urls="$2" # e.g. http://192.168.0.1/announce|udp://192.168.0.1:3333/dummyAnnounce
+    # 404 -- Torrent hash was not found
+    # 409 -- All urls were not found
+    # 200 -- All other scenarios
+    get_cookie &&
+    qbt_webapi_response=$(echo "$qbt_cookie" | $curl_executable \
+        -d "hash=$torrent_hash&urls=$tracker_urls" \
+        --cookie - \
+        --request POST "${qbt_host}:${qbt_port}/api/v2/torrents/removeTrackers") || exit $EXIT_ERROR
+}
+
 function get_torrent_peers {
     local torrent_hash="$1"
     get_cookie &&
@@ -99,6 +125,15 @@ function get_torrents {
     qbt_torrents=$(echo "$qbt_cookie" | $curl_executable \
         --cookie - \
         --request GET "${qbt_host}:${qbt_port}/api/v2/torrents/info${params}")
+}
+
+function reannounce_torrent {
+    local torrent_hash="$1" # e.g. all, 8c212779b4abde7c6bc608063a0d008b7e40ce32|54eddd830a5b58480a6143d616a97e3a6c23c439
+    # 200 -- All scenarios
+    get_cookie &&
+    qbt_webapi_response=$(echo "$qbt_cookie" | $curl_executable \
+        --cookie - \
+        --request GET "${qbt_host}:${qbt_port}/api/v2/torrents/reannounce?hashes=$torrent_hash") || exit $EXIT_ERROR
 }
 
 # other functions

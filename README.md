@@ -46,7 +46,8 @@ $ ./test-example.sh
  · EXAMPLE_5: ban_peers_matching.sh ............................  SUCCESS
  · EXAMPLE_6: torrent_peers_get.sh .............................  SUCCESS
  · EXAMPLE_7: torrent_trackers_get.sh ..........................  SUCCESS
- · EXAMPLE_8: torrents_get.sh ..................................  SUCCESS
+ · EXAMPLE_8: torrent_trackers_update.sh .......................  SUCCESS
+ · EXAMPLE_9: torrents_get.sh ..................................  SUCCESS
 ```
 
 ## Alternate

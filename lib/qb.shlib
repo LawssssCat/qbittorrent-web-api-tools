@@ -5,6 +5,7 @@ export EXIT_OK=0
 export EXIT_ERROR=1        # cause by unknown
 export EXIT_EXCEPTION=2    # cause by env
 export EXIT_ARGUMENT=127   # cause by user
+export EXIT_SKIP=222       # skip
 
 # prints
 export COLOR_RED='\e[1;31m'
@@ -68,4 +69,10 @@ function lines_number {
 
 function lines_unique {
   lines_arg "$@" | awk '!a[$0]++{print}'
+}
+
+function lines_join {
+  local lines_fz="${1}"
+  shift
+  lines_arg "$@" | sed ':a; N; $!ba; s/\n/'"$lines_fz"'/g'
 }

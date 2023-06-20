@@ -19,7 +19,9 @@ udp://tracker.sylphix.com:6969/announce
 echo "$qbt_net_trackers"
 
 echo "=========== set tracker ==========="
-set_app_preferences "{\"add_trackers\":\"$(echo "$qbt_net_trackers" | sed ':a; N; $!ba; s/\n/\\n/g')\"}" || exit 1
+qbt_preferences_json="{\"add_trackers\":\"$(lines_join '\\n' "$qbt_net_trackers")\"}"
+echo "$qbt_preferences_json"
+set_app_preferences "$qbt_preferences_json" || exit 1
 
 echo "=========== \"add_trackers\" in app ==========="
 get_app_preferences && 
