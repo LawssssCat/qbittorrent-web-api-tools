@@ -7,31 +7,40 @@ source ./set-env.sh
 source ../lib/qb.shlib
 source ../lib/qb.web-api.shlib
 
-echo "=========== search params ==========="
-qbt_torrent_search_params="filter=$active"
-echo "$qbt_torrent_search_params"
-
-echo "=========== the list of torrent ==========="
-get_torrents "$qbt_torrent_search_params" && 
-qbt_torrents="$(echo "$qbt_torrents")" || exit 1
-if [ -z "$qbt_torrents" ]; then
-    echo "Torrent Unfound. Please ensure that at least one torrent is active." >&2
-    exit 1
+# ready
+if [ -z "$example_torrent_hashs" ]; then
+    echo "=========== get a torrent ==========="
+    source torrents_get.sh >/dev/null
+    example_torrent_hashs="$(echo "$example_torrent_json" | $jq_executable '.hash' -r)"
+    if [ -n "$example_torrent_hashs" ]; then
+        echo "ok"
+    else
+        echo "fail" >&2
+        exit $EXIT_ERROR
+    fi
 fi
-echo "$qbt_torrents" 
 
+# run
 echo "=========== the list of torrent hash ==========="
-qbt_torrent_hashs="$(echo "$qbt_torrents" | $jq_executable ".[].hash" -r)" || exit 1
-echo "$qbt_torrent_hashs"
+example_torrent_hashs="$(lines_trim "$example_torrent_hashs")"
+echo "$example_torrent_hashs"
 
 echo "=========== the list of peers of torrent hash ==========="
-for h in $qbt_torrent_hashs; do 
+for h in $example_torrent_hashs; do 
     echo "hash: $h"
-    get_torrent_peers "$h" && echo "$qbt_torrent_peers" | $jq_executable ".peers | to_entries[] | {\
+    get_torrent_peers "$h" || {
+        echo "response status:"
+        echo "$qbt_webapi_response_status"
+        echo "error message:"
+        echo "$qbt_webapi_response_error"
+        exit $EXIT_ERROR
+    } >&2
+    example_torrent_peers_json="$qbt_webapi_response_body"
+    echo "$example_torrent_peers_json" | $jq_executable ".peers | to_entries[] | {\
     id:.key,\
     client:.value.client,\
     peer_id_client:.value.peer_id_client,\
     connection:.value.connection,\
     country:.value.country_code\
-    }" -c || exit 1
+    }" -c || exit $EXIT_ERROR
 done
