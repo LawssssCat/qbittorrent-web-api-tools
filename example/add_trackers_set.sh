@@ -7,23 +7,41 @@ source ./set-env.sh
 source ../lib/qb.shlib
 source ../lib/qb.web-api.shlib
 
+# ready
 echo "=========== mock trackers ==========="
-qbt_net_trackers="
+: ${example__trackers:="
 http://tracker.electro-torrent.pl/announce
 http://1337.abcvg.info/announce
 https://trackme.theom.nz:443/announce
 https://tr.abiir.top/announce
 https://tracker.gbitt.info/announce
 udp://tracker.sylphix.com:6969/announce
-"
-echo "$qbt_net_trackers"
+"}
+echo "\"$example__trackers\""
 
-echo "=========== set tracker ==========="
-qbt_preferences_json="{\"add_trackers\":\"$(lines_join '\\n' "$qbt_net_trackers")\"}"
-echo "$qbt_preferences_json"
-set_app_preferences "$qbt_preferences_json" || exit 1
+# run
+echo "=========== json add_trackers ==========="
+example__preferences_json="$($jq_executable --null-input \
+    --arg add_trackers "$example__trackers" \
+    '{"add_trackers":$add_trackers}')" || exit $EXIT_ERROR
+echo "$example__preferences_json"
 
-echo "=========== \"add_trackers\" in app ==========="
+echo "=========== set add_trackers ==========="
+set_app_preferences "$example__preferences_json" && {
+    echo "response status:"
+    echo "$qbt_webapi_response_status"
+    echo "response body:"
+    echo "$qbt_webapi_response_body"
+} || {
+    echo "response status:"
+    echo "$qbt_webapi_response_status"
+    echo "error message:"
+    echo "$qbt_webapi_response_error"
+    exit $EXIT_ERROR
+} >&2
+
+# check
+echo "=========== get add_trackers from app ==========="
 get_app_preferences || {
     echo "response status:"
     echo "$qbt_webapi_response_status"
@@ -31,15 +49,15 @@ get_app_preferences || {
     echo "$qbt_webapi_response_error"
     exit $EXIT_ERROR
 } >&2
-qbt_app_trackers_now=$(echo "$qbt_webapi_response_body" | $jq_executable ".add_trackers" -r) || exit 1
-echo "$qbt_app_trackers_now"
+example__add_trackers_now=$(echo "$qbt_webapi_response_body" | $jq_executable ".add_trackers" -r) || exit $EXIT_ERROR
+echo "\"$example__add_trackers_now\""
 
-echo "=========== judge the result ==========="
-num_fetch="$(lines_number "$qbt_net_trackers")"
-num_app="$(lines_number "$qbt_app_trackers_now")"
-if [ "$num_fetch" -eq "$num_app" ]; then
+echo "=========== check ==========="
+example__add_trackers_num="$(lines_number "$example__trackers")"
+example__add_trackers_now_num="$(lines_number "$example__add_trackers_now")"
+if [ "$example__add_trackers_num" -eq "$example__add_trackers_now_num" ]; then
     echo "ok!"
 else 
-    echo "exception! FETCH,NOW=$num_fetch,$num_app" >&2
-    exit 1
+    echo "exception! FETCH,NOW=$example__add_trackers_num,$example__add_trackers_now_num" >&2
+    exit $EXIT_ERROR
 fi

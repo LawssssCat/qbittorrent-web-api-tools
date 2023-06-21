@@ -23,9 +23,9 @@ source ../lib/qb.web-api.shlib
 
 call functions
 
-e.g. fetch tracker from net and set it to app preference "add_trackers". —— `add_trackers_fetch.sh`,`add_trackers_set.sh`
+e.g. fetch tracker from net and set it to app preference "add_trackers". —— `add_trackers_set.sh`
 
-e.g. ban peers that look like they are from XunLei —— `ban_peers_matching.sh`,`ban_peers_add.sh`
+e.g. ban peers that look like they are from XunLei —— `ban_peers_add.sh`
 
 e.g. clean banned peers —— `ban_peers_clean.sh`
 
@@ -38,16 +38,15 @@ set_app_preferences '{"banned_IPs":""}'
 ```bash
 $ cd ./test
 $ ./test-example.sh
- · EXAMPLE_0: add_trackers_fetch.sh ............................  SUCCESS
- · EXAMPLE_1: add_trackers_set.sh ..............................  SUCCESS
- · EXAMPLE_2: app_preferences_get.sh ...........................  SUCCESS
- · EXAMPLE_3: ban_peers_add.sh .................................  SUCCESS
- · EXAMPLE_4: ban_peers_clean.sh ...............................  SUCCESS
- · EXAMPLE_5: ban_peers_matching.sh ............................  SUCCESS
- · EXAMPLE_6: torrent_peers_get.sh .............................  SUCCESS
- · EXAMPLE_7: torrent_trackers_get.sh ..........................  SUCCESS
- · EXAMPLE_8: torrent_trackers_update.sh .......................  SUCCESS
- · EXAMPLE_9: torrents_get.sh ..................................  SUCCESS
+ · EXAMPLE_0: add_trackers_set.sh ..............................  SUCCESS
+ · EXAMPLE_1: app_preferences_get.sh ...........................  SUCCESS
+ · EXAMPLE_2: ban_peers_add.sh .................................  SUCCESS
+ · EXAMPLE_3: ban_peers_clean.sh ...............................  SUCCESS
+ · EXAMPLE_4: torrent_peers_get.sh .............................  SUCCESS
+ · EXAMPLE_5: torrent_trackers_add.sh ..........................  SUCCESS
+ · EXAMPLE_6: torrent_trackers_get.sh ..........................  SUCCESS
+ · EXAMPLE_7: torrent_trackers_remove.sh .......................  SUCCESS
+ · EXAMPLE_8: torrents_get.sh ..................................  SUCCESS
 ```
 
 ## Alternate

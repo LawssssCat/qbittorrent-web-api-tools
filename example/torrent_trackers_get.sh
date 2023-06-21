@@ -7,28 +7,34 @@ source ./set-env.sh
 source ../lib/qb.shlib
 source ../lib/qb.web-api.shlib
 
-if [ -n "$qbt_torrent_hash" ]; then
-    echo "=========== torrents hash ==========="
-    echo "$qbt_torrent_hash"
-else
-    echo "=========== get torrents ==========="
-    get_torrents "filter=active" && echo "$qbt_torrents" || exit 1
-
-    echo "=========== get torrents hash ==========="
-    qbt_torrent_hashs="$(echo "$qbt_torrents" | $jq_executable ".[].hash" -r)" || exit 1
-    echo "$qbt_torrent_hashs"
-
-    echo "=========== select a hash ==========="
-    if [ "$(lines_number "$qbt_torrent_hashs")" -le 0 ]; then
-        echo "Please add a torrent first." >&2
-        exit 1
+# ready
+if [ -z "$example_torrent_hashs" ]; then
+    echo "=========== get a torrent ==========="
+    source torrents_get.sh >/dev/null
+    example_torrent_hashs="$(echo "$example_torrent_json" | $jq_executable '.hash' -r)"
+    if [ -n "$example_torrent_hashs" ]; then
+        echo "ok"
+    else
+        echo "fail" >&2
+        exit $EXIT_ERROR
     fi
-    qbt_torrent_hash="$(echo "$qbt_torrent_hashs" | head -n 1)"
-    echo "$qbt_torrent_hash"
 fi
 
-echo "=========== get torrent trackers ==========="
-get_torrent_trackers "$qbt_torrent_hash" && echo "$qbt_torrent_trackers" || exit 1
+echo "=========== the list of torrent hash ==========="
+example_torrent_hashs="$(lines_trim "$example_torrent_hashs")"
+echo "$example_torrent_hashs"
 
-echo "=========== the list of url ==========="
-echo "$qbt_torrent_trackers" | $jq_executable ".[].url" -r
+# run
+echo "=========== the list of trackers of torrent hash ==========="
+for h in $example_torrent_hashs; do 
+    echo "hash: $h"
+    get_torrent_trackers "$h" || {
+        echo "response status:"
+        echo "$qbt_webapi_response_status"
+        echo "error message:"
+        echo "$qbt_webapi_response_error"
+        exit $EXIT_ERROR
+    } >&2
+    example_torrent_trackers_json="$qbt_webapi_response_body"
+    echo "$example_torrent_trackers_json" | $jq_executable ".| to_entries[]" -c || exit $EXIT_ERROR
+done
