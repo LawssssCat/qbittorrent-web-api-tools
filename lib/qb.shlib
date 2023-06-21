@@ -50,11 +50,13 @@ function debug {
 
 function lines_arg {
   if [[ $# -gt 0 ]]; then
-    echo "${@}"
+    for var in "$@"; do
+      echo "$var"
+    done
   else
     while read data
     do
-      echo "${data}"
+      echo "$data"
     done
   fi
 }
