@@ -29,18 +29,18 @@ function warn {
 
 
 # print to screen and log (only active when DEBUG is 'true')
+function is_debug {
+  [ "$QBT_DEBUG" == 'true' ] && return 0 || return 1
+}
 function debug {
-  if [[ "$QBT_DEBUG" = 'true' ]]
-  then
-    if [[ $# -gt 0 ]]
-    then
+  if is_debug ; then
+    [ $# -gt 0 ] && {
       echo -e "DEBUG: ${@}"
-    else
-      while read data
-      do
+    } || {
+      while read data; do
         echo -e "DEBUG: ${data}"
       done
-    fi
+    }
   fi
 }
 
@@ -49,7 +49,7 @@ function debug {
 ###
 
 function lines_arg {
-  if [[ $# -gt 0 ]]; then
+  if [ $# -gt 0 ]; then
     for var in "$@"; do
       echo "$var"
     done
