@@ -7,8 +7,8 @@
 : ${qbt_password:=adminadmin}
 
 # paths
-jq_executable="$(command -v jq)"
-curl_executable="$(command -v curl)"
+export jq_executable="$(command -v jq)"
+export curl_executable="$(command -v curl)"
 
 if [[ ! -x $jq_executable ]]; then
     fatal $EXIT_EXCEPTION "${COLOR_RED}Fail on jq. Aborting.${COLOR_RESET}" "\n" \
@@ -20,11 +20,6 @@ if [[ ! -x $curl_executable ]]; then
     fatal $EXIT_EXCEPTION "${COLOR_RED}Fail on curl. Aborting.${COLOR_RESET}" "\n" \
     "You can install it with -> sudo apt install curl"
 fi
-
-export jq_executable
-export curl_executable
-
-curl_executable="$curl_executable --silent --fail --show-error --connect-timeout 120"
 
 ####################################
 # qbittorrent web-api functions
@@ -41,9 +36,10 @@ curl_executable="$curl_executable --silent --fail --show-error --connect-timeout
 # <method> <uri> <body> [curl options...]
 #
 # return:
-# qbt_webapi_response_status -- response status code
-# qbt_webapi_response_error  -- response error message
-# qbt_webapi_response_body   -- response body string
+# qbt_webapi_response_status   -- response status code
+# qbt_webapi_response_error    -- response error message
+# qbt_webapi_response_headers  -- response headers string
+# qbt_webapi_response_body     -- response body string
 #
 function call_web_api {
     local request_method="$1" # GET/POST
@@ -52,32 +48,72 @@ function call_web_api {
     shift $(($#>3 ? 3 : $#))
     local curl_opts="$@"
 
-    local qbt_webapi_response=""
-    qbt_webapi_response=$(echo "$qbt_cookie" | $curl_executable \
+    local response_context=""
+    response_context=$(echo "$qbt_cookie" | $curl_executable --connect-timeout 120 \
         $curl_opts \
+        --silent --fail-with-body --show-error \
+        --include \
+        --write-out "\n%{size_header},%{size_download}" \
         --data "$request_body" \
-        --write-out "\n%{http_code}" \
         --cookie - \
         --request $request_method "$request_path" 2>&1)
-    local qbt_webapi_request_return="$?"
-    debug "request: $request_method $request_path"
-    debug "request_body: \"$request_body\""
-    debug "curl_opts: $curl_opts"
-    debug "response: \"$qbt_webapi_response\""
+    local request_return="$?"
+
+    is_debug && {
+        debug "webapi-request: $($jq_executable --null-input \
+        --arg request_method "$request_method" --arg request_path "$request_path" \
+        --arg curl_opts "$curl_opts" \
+        --arg request_body "$request_body" \
+        --arg request_return "$request_return" \
+        '{
+            "request_method":$request_method,"request_path":$request_path,
+            "curl_opts":$curl_opts,
+            "request_body":$request_body,
+            "request_return":$request_return
+        }' -c)"
+    }
 
     reset_web_api_response # reset
-    if [ $qbt_webapi_request_return -eq 0 ]; then
-        qbt_webapi_response_body="$(echo "$qbt_webapi_response" | head -n -1)"
-        qbt_webapi_response_status="$(echo "$qbt_webapi_response" | tail -n 1)"
+
+    local response_header_size=$(sed -n '$ s/^\([0-9]*\),.*$/\1/ p' <<< "${response_context}")
+    local response_body_size=$(sed -n '$ s/^.*,\([0-9]*\)$/\1/ p' <<< "${response_context}")
+    # response headers
+    qbt_webapi_response_headers="${response_context:0:${response_header_size}}"
+    # response status
+    if [ -n "$qbt_webapi_response_headers" ]; then
+        qbt_webapi_response_status="$(echo "$qbt_webapi_response_headers"| head -n 1 | awk '{print $2}')"
     else
-        qbt_webapi_response_error="$FUNCNAME: $(echo "$qbt_webapi_response" | head -n -1)"
-        qbt_webapi_response_status="$(echo "$qbt_webapi_response" | tail -n 1)"
+        qbt_webapi_response_status="000"
     fi
+    # response body
+    if [ $request_return -eq 0 ]; then
+        local tmp_response_part="${response_context:${response_header_size}}"
+        qbt_webapi_response_body="$(echo "$tmp_response_part" | head -n -1)"
+    else
+        local tmp_response_part="${response_context:${response_header_size}}"
+        qbt_webapi_response_error="$FUNCNAME: $(echo "$tmp_response_part" | head -n 1)"
+        qbt_webapi_response_body="$(echo "$tmp_response_part" | tail -n +2 | head -n -1)"
+    fi
+
+    is_debug && {
+        debug "webapi-response: $($jq_executable --null-input \
+        --arg response_status "$qbt_webapi_response_status" \
+        --arg response_headers "$qbt_webapi_response_headers" \
+        --arg response_error "$qbt_webapi_response_error" \
+        '{
+            "response_status":$response_status,
+            "response_headers":$response_headers,
+            "response_error":$response_error
+        }' -c)"
+        debug "webapi-response-body: $qbt_webapi_response_body"
+    }
+
     return $qbt_webapi_request_return
 }
 
 function reset_web_api_response {
     qbt_webapi_response_error=""
+    qbt_webapi_response_headers=""
     qbt_webapi_response_body=""
     qbt_webapi_response_status="000"
 }
@@ -87,17 +123,20 @@ function reset_web_api_response {
 # 200	All other scenarios
 function get_cookie {
     if [ -n "$qbt_cookie" ]; then
-        reset_web_api_response
-        qbt_webapi_response_body="$qbt_cookie"
-        qbt_webapi_response_status="200"
         return $EXIT_OK
     fi
-    local qbt_cookie_path='/tmp/qbittorrent-web-api-tools-cookie'
-    call_web_api "POST" "/api/v2/auth/login" "username=${qbt_username}&password=${qbt_password}" --cookie-jar "$qbt_cookie_path"
+    call_web_api "POST" "/api/v2/auth/login" "username=${qbt_username}&password=${qbt_password}"
+    # ok
     if [ "$qbt_webapi_response_status" -eq 200 ] && [ "$qbt_webapi_response_body" == "Ok." ]; then
-        qbt_cookie="$(cat $qbt_cookie_path)"
-        return $EXIT_OK
-    elif [ "$qbt_webapi_response_status" -eq 200 ] && [ "$qbt_webapi_response_body" == "Fails." ]; then
+        qbt_cookie="$(echo "$qbt_webapi_response_headers" | grep 'set-cookie: SID' | awk '{print $2}')"
+        if [ -n "$qbt_cookie" ]; then
+            return $EXIT_OK
+        fi
+        qbt_webapi_response_error="$FUNCNAME: Can't get Cookie 'SID' from response headers; $qbt_webapi_response_error"
+        return $EXIT_ERROR
+    fi
+    # exceptions
+    if [ "$qbt_webapi_response_status" -eq 200 ] && [ "$qbt_webapi_response_body" == "Fails." ]; then
         qbt_webapi_response_error="$FUNCNAME: Login fail; $qbt_webapi_response_error"
         return $EXIT_ERROR
     elif [ "$qbt_webapi_response_status" -eq 403 ]; then
