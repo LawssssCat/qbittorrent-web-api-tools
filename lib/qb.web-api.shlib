@@ -49,28 +49,23 @@ function call_web_api {
     local curl_opts="$@"
 
     local response_context=""
-    response_context=$(echo "$qbt_cookie" | $curl_executable --connect-timeout 120 \
+    response_context=$($curl_executable --connect-timeout 120 \
         $curl_opts \
-        --silent --fail-with-body --show-error \
+        --silent --fail-with-body --show-error --stderr - \
         --include \
         --write-out "\n%{size_header},%{size_download}" \
         --data "$request_body" \
-        --cookie - \
-        --request $request_method "$request_path" 2>&1)
+        --cookie "$qbt_cookie" \
+        --request $request_method "$request_path")
     local request_return="$?"
 
     is_debug && {
-        debug "webapi-request: $($jq_executable --null-input \
-        --arg request_method "$request_method" --arg request_path "$request_path" \
-        --arg curl_opts "$curl_opts" \
-        --arg request_body "$request_body" \
-        --arg request_return "$request_return" \
-        '{
-            "request_method":$request_method,"request_path":$request_path,
-            "curl_opts":$curl_opts,
-            "request_body":$request_body,
-            "request_return":$request_return
-        }' -c)"
+        local tmp_debug_logo="webapi-request"
+        debug "$tmp_debug_logo: target: $request_method $request_path"
+        debug "$tmp_debug_logo: cookie: $qbt_cookie"
+        debug "$tmp_debug_logo: option: $curl_opts"
+        debug "$tmp_debug_logo: body  : $request_body"
+        debug "$tmp_debug_logo: return: $request_return"
     }
 
     reset_web_api_response # reset
@@ -96,16 +91,12 @@ function call_web_api {
     fi
 
     is_debug && {
-        debug "webapi-response: $($jq_executable --null-input \
-        --arg response_status "$qbt_webapi_response_status" \
-        --arg response_headers "$qbt_webapi_response_headers" \
-        --arg response_error "$qbt_webapi_response_error" \
-        '{
-            "response_status":$response_status,
-            "response_headers":$response_headers,
-            "response_error":$response_error
-        }' -c)"
-        debug "webapi-response-body: $qbt_webapi_response_body"
+        local tmp_debug_logo="webapi-response"
+        debug "webapi-response: context: $response_context"
+        debug "webapi-response: status : $qbt_webapi_response_status"
+        debug "webapi-response: header : $qbt_webapi_response_headers"
+        debug "webapi-response: error  : $qbt_webapi_response_error"
+        debug "webapi-response: body   : $qbt_webapi_response_body"
     }
 
     return $qbt_webapi_request_return
@@ -128,7 +119,7 @@ function get_cookie {
     call_web_api "POST" "/api/v2/auth/login" "username=${qbt_username}&password=${qbt_password}"
     # ok
     if [ "$qbt_webapi_response_status" -eq 200 ] && [ "$qbt_webapi_response_body" == "Ok." ]; then
-        qbt_cookie="$(echo "$qbt_webapi_response_headers" | grep 'set-cookie: SID' | awk '{print $2}')"
+        qbt_cookie="$(echo "$qbt_webapi_response_headers" | grep 'set-cookie: ' | awk -F ' ' '{print $2}')"
         if [ -n "$qbt_cookie" ]; then
             return $EXIT_OK
         fi
